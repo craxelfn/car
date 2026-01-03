@@ -10,33 +10,64 @@ import {
     KinesisVideoSignalingClient,
     GetIceServerConfigCommand,
 } from "@aws-sdk/client-kinesis-video-signaling";
-import { fromCognitoIdentityPool } from "@aws-sdk/credential-providers";
+import { STSClient, AssumeRoleCommand } from "@aws-sdk/client-sts";
 
 export async function GET() {
     try {
         const region = process.env.AWS_REGION || "eu-west-3";
-        const identityPoolId = process.env.AWS_IDENTITY_POOL_ID;
         const channelName = process.env.KVS_CHANNEL_NAME;
+        const roleArn = process.env.PUBLIC_VIEWER_ROLE_ARN;
+        const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
+        const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
 
-        if (!identityPoolId || !channelName) {
+        if (!channelName || !roleArn || !accessKeyId || !secretAccessKey) {
             return NextResponse.json(
-                { error: "Missing AWS Identity Pool ID or channel name in environment variables" },
+                { error: "Missing required environment variables" },
                 { status: 500 }
             );
         }
 
-        // Get credentials from Cognito Identity Pool (unauthenticated)
-        const credentials = fromCognitoIdentityPool({
-            identityPoolId,
-            clientConfig: { region },
+        // 1. Create STS Client with long-term credentials
+        const stsClient = new STSClient({
+            region,
+            credentials: {
+                accessKeyId,
+                secretAccessKey,
+            },
         });
+
+        // 2. Assume the Public Viewer Role
+        const assumeRoleCommand = new AssumeRoleCommand({
+            RoleArn: roleArn,
+            RoleSessionName: `ViewerSession-${Date.now()}`,
+            DurationSeconds: 3600, // 1 hour
+        });
+
+        const assumedRole = await stsClient.send(assumeRoleCommand);
+
+        if (!assumedRole.Credentials) {
+            throw new Error("Failed to assume role: No credentials returned");
+        }
+
+        const tempCredentials = {
+            accessKeyId: assumedRole.Credentials.AccessKeyId!,
+            secretAccessKey: assumedRole.Credentials.SecretAccessKey!,
+            sessionToken: assumedRole.Credentials.SessionToken!,
+        };
+
+        // 3. Create KVS Client with SERVER credentials to get endpoints
+        // Use the same server credentials as STS
+        const serverCredentials = {
+            accessKeyId,
+            secretAccessKey,
+        };
 
         const kinesisVideoClient = new KinesisVideoClient({
             region,
-            credentials,
+            credentials: serverCredentials,
         });
 
-        // Get channel ARN
+        // 4. Get Channel ARN
         const describeCommand = new DescribeSignalingChannelCommand({
             ChannelName: channelName,
         });
@@ -50,7 +81,7 @@ export async function GET() {
             );
         }
 
-        // Get signaling channel endpoints
+        // 5. Get Signaling Channel Endpoints
         const getEndpointCommand = new GetSignalingChannelEndpointCommand({
             ChannelARN: channelARN,
             SingleMasterChannelEndpointConfiguration: {
@@ -67,10 +98,10 @@ export async function GET() {
             }
         });
 
-        // Get ICE server configuration
+        // 6. Get ICE Server Config
         const kvsSignalingClient = new KinesisVideoSignalingClient({
             region,
-            credentials,
+            credentials: serverCredentials,
             endpoint: endpoints.HTTPS,
         });
 
@@ -79,21 +110,16 @@ export async function GET() {
         });
         const iceServerResponse = await kvsSignalingClient.send(iceServerCommand);
 
-        // Get actual credentials to pass to client
-        const resolvedCredentials = await credentials();
-
+        // 7. Return everything to the client
         return NextResponse.json({
             channelARN,
             channelName,
             region,
             endpoints,
             iceServers: iceServerResponse.IceServerList || [],
-            credentials: {
-                accessKeyId: resolvedCredentials.accessKeyId,
-                secretAccessKey: resolvedCredentials.secretAccessKey,
-                sessionToken: resolvedCredentials.sessionToken,
-            },
+            credentials: tempCredentials,
         });
+
     } catch (error) {
         console.error("KVS Signaling Error:", error);
         return NextResponse.json(
