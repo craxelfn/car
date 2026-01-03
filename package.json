@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@aws-sdk/client-iot-data-plane": "^3.962.0",
     "@aws-sdk/client-kinesis-video": "^3.962.0",
     "@aws-sdk/client-kinesis-video-signaling": "^3.962.0",
     "@aws-sdk/client-sts": "^3.962.0",
