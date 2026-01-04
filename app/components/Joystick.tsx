@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from 'react';
+import { useRef, useCallback, useEffect } from 'react';
 import { Crosshair } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -12,19 +12,64 @@ interface JoystickProps {
 }
 
 export default function Joystick({ label, type, onMove, className }: JoystickProps) {
-    const [active, setActive] = useState(false);
-    const [position, setPosition] = useState({ x: 0, y: 0 });
-    const stickRef = useRef<HTMLDivElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
-    const maxRadius = 60; // Max distance from center
+    const stickRef = useRef<HTMLDivElement>(null);
+    const isActiveRef = useRef(false);
+    const positionRef = useRef({ x: 0, y: 0 });
+    const rafRef = useRef<number | null>(null);
+    const maxRadius = 60;
 
-    const handlePointerDown = (e: React.PointerEvent) => {
-        setActive(true);
-        e.currentTarget.setPointerCapture(e.pointerId);
-    };
+    // Direct position update - no interpolation for instant response
+    const updatePosition = useCallback((x: number, y: number) => {
+        positionRef.current = { x, y };
+        if (stickRef.current) {
+            stickRef.current.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+        }
+    }, []);
 
-    const handlePointerMove = (e: React.PointerEvent) => {
-        if (!active || !containerRef.current) return;
+    // Smooth spring-back animation when released
+    const animateBack = useCallback(() => {
+        const current = positionRef.current;
+
+        // Fast spring back
+        current.x *= 0.75;
+        current.y *= 0.75;
+
+        // Snap to zero if close
+        if (Math.abs(current.x) < 1 && Math.abs(current.y) < 1) {
+            current.x = 0;
+            current.y = 0;
+        }
+
+        if (stickRef.current) {
+            stickRef.current.style.transform = `translate3d(${current.x}px, ${current.y}px, 0)`;
+        }
+
+        if (current.x !== 0 || current.y !== 0) {
+            rafRef.current = requestAnimationFrame(animateBack);
+        } else {
+            rafRef.current = null;
+        }
+    }, []);
+
+    const handlePointerDown = useCallback((e: React.PointerEvent) => {
+        isActiveRef.current = true;
+        (e.target as HTMLElement).setPointerCapture(e.pointerId);
+
+        // Cancel any ongoing animation
+        if (rafRef.current) {
+            cancelAnimationFrame(rafRef.current);
+            rafRef.current = null;
+        }
+
+        if (containerRef.current) {
+            containerRef.current.style.borderColor = 'rgb(6 182 212)';
+            containerRef.current.style.boxShadow = '0 0 20px rgba(6, 182, 212, 0.3)';
+        }
+    }, []);
+
+    const handlePointerMove = useCallback((e: React.PointerEvent) => {
+        if (!isActiveRef.current || !containerRef.current) return;
 
         const rect = containerRef.current.getBoundingClientRect();
         const centerX = rect.left + rect.width / 2;
@@ -33,7 +78,6 @@ export default function Joystick({ label, type, onMove, className }: JoystickPro
         let x = e.clientX - centerX;
         let y = e.clientY - centerY;
 
-        // Calculate distance and clamp to maxRadius
         const distance = Math.sqrt(x * x + y * y);
         if (distance > maxRadius) {
             const angle = Math.atan2(y, x);
@@ -41,54 +85,57 @@ export default function Joystick({ label, type, onMove, className }: JoystickPro
             y = Math.sin(angle) * maxRadius;
         }
 
-        // Invert Y because screen coordinates (down is +) vs joystick logic (up is usually +)
-        // Actually, the previous implementation did:
-        // Forward (Up) -> onMove(0, 1)  (Y is positive for forward)
-        // Backward (Down) -> onMove(0, -1) (Y is negative for backward)
-        // Screen Y: Up is negative, Down is positive.
-        // So we need to invert Y for the onMove callback to match existing logic.
+        // Instant update - no delay
+        updatePosition(x, y);
 
-        // Normalize to -1 to 1 for callback
         const normX = x / maxRadius;
-        const normY = -(y / maxRadius); // Invert Y
-
-        setPosition({ x, y });
+        const normY = -(y / maxRadius);
         onMove?.(normX, normY);
-    };
+    }, [onMove, updatePosition]);
 
-    const handlePointerUp = (e: React.PointerEvent) => {
-        setActive(false);
-        setPosition({ x: 0, y: 0 });
-        onMove?.(0, 0); // Reset
-        e.currentTarget.releasePointerCapture(e.pointerId);
-    };
+    const handlePointerUp = useCallback((e: React.PointerEvent) => {
+        isActiveRef.current = false;
+        (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+
+        if (containerRef.current) {
+            containerRef.current.style.borderColor = '';
+            containerRef.current.style.boxShadow = '';
+        }
+
+        // Start spring-back animation
+        rafRef.current = requestAnimationFrame(animateBack);
+        onMove?.(0, 0);
+    }, [onMove, animateBack]);
+
+    useEffect(() => {
+        return () => {
+            if (rafRef.current) {
+                cancelAnimationFrame(rafRef.current);
+            }
+        };
+    }, []);
 
     return (
         <div className={clsx("flex flex-col items-center gap-4 select-none", className)}>
             <div
                 ref={containerRef}
-                className={clsx(
-                    "w-48 h-48 rounded-full border-4 flex items-center justify-center relative touch-none",
-                    active ? "border-cyan-500 shadow-[0_0_20px_rgba(6,182,212,0.3)] bg-cyan-950/20" : "border-border bg-card"
-                )}
+                className="w-48 h-48 rounded-full border-4 border-neutral-700 flex items-center justify-center relative touch-none bg-neutral-900/50"
+                style={{ transition: 'border-color 0.15s, box-shadow 0.15s' }}
                 onPointerDown={handlePointerDown}
                 onPointerMove={handlePointerMove}
                 onPointerUp={handlePointerUp}
                 onPointerLeave={handlePointerUp}
+                onPointerCancel={handlePointerUp}
             >
-                {/* Stick */}
                 <div
                     ref={stickRef}
                     style={{
-                        transform: `translate(${position.x}px, ${position.y}px)`,
+                        transform: 'translate3d(0px, 0px, 0)',
+                        willChange: 'transform',
+                        backfaceVisibility: 'hidden'
                     }}
                     className={clsx(
-                        "w-20 h-20 rounded-full shadow-xl flex items-center justify-center cursor-pointer pointer-events-none", // pointer-events-none so the container gets the events
-                        // But wait, if container gets events, fine. 
-                        // Actually, better to have a dedicated hit area or let drag happen on the stick?
-                        // If I drag OUT of the stick, I want it to continue. 
-                        // Putting listeners on the container is safest.
-                        active ? "transition-none" : "transition-transform duration-200 cubic-bezier(0.1, 1.4, 0.4, 1.0)", // Spring back when released
+                        "w-20 h-20 rounded-full shadow-xl flex items-center justify-center pointer-events-none",
                         type === 'movement'
                             ? "bg-gradient-to-br from-cyan-500 to-blue-700 text-white"
                             : "bg-gradient-to-br from-purple-500 to-indigo-700 text-white"

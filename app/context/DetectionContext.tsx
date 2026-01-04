@@ -18,9 +18,11 @@ interface DetectionContextType {
     detectionLogs: DetectionLog[];
     targetClass: string;
     isTargetFound: boolean;
+    isPaused: boolean;
     setDetectedObjects: (objects: DetectedObject[]) => void;
     setTargetClass: (target: string) => void;
     addDetectionLog: (objects: string[]) => void;
+    setPaused: (paused: boolean) => void;
 }
 
 const DetectionContext = createContext<DetectionContextType | undefined>(undefined);
@@ -29,6 +31,7 @@ export function DetectionProvider({ children }: { children: ReactNode }) {
     const [detectedObjects, setDetectedObjects] = useState<DetectedObject[]>([]);
     const [detectionLogs, setDetectionLogs] = useState<DetectionLog[]>([]);
     const [targetClass, setTargetClass] = useState<string>('');
+    const [isPaused, setPaused] = useState<boolean>(false);
 
     const isTargetFound = targetClass !== '' &&
         detectedObjects.some(obj =>
@@ -40,7 +43,6 @@ export function DetectionProvider({ children }: { children: ReactNode }) {
 
         setDetectionLogs(prev => {
             const newLog = { timestamp: new Date(), objects };
-            // Keep only last 50 logs
             const updated = [newLog, ...prev].slice(0, 50);
             return updated;
         });
@@ -52,9 +54,11 @@ export function DetectionProvider({ children }: { children: ReactNode }) {
             detectionLogs,
             targetClass,
             isTargetFound,
+            isPaused,
             setDetectedObjects,
             setTargetClass,
             addDetectionLog,
+            setPaused,
         }}>
             {children}
         </DetectionContext.Provider>
