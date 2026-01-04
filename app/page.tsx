@@ -1,7 +1,7 @@
 "use client";
 import { useRef } from 'react';
 
-import { Activity, Signal, Wifi, Settings } from 'lucide-react';
+import { Activity, Signal, Settings } from 'lucide-react';
 import VideoPlayer from './components/VideoPlayer';
 import Joystick from './components/Joystick';
 import StatusCard from './components/StatusCard';
@@ -16,7 +16,6 @@ function DashboardContent() {
   const { isConnected, status, sendCommand, lastMessage } = useIoTConnection();
   const { detectionLogs } = useDetection();
 
-  // Use the new keyboard controls hook
   useKeyboardControls({
     onMove: (command: string) => {
       console.log(`[Keyboard] Triggering API: ${command}`);
@@ -24,14 +23,11 @@ function DashboardContent() {
     }
   });
 
-  // Ref to track the last sent joystick command to avoid spamming the API
   const lastJoystickCommand = useRef<string>('stop');
 
   const handleJoystickMove = (x: number, y: number) => {
     let command = 'stop';
 
-    // Simple threshold logic for direction
-    // Using 0.4 threshold for easier triggering
     if (y > 0.4) command = 'forward';
     else if (y < -0.4) command = 'backward';
     else if (x < -0.4) command = 'left';
@@ -44,97 +40,76 @@ function DashboardContent() {
     }
   };
 
-  // Format time for logs
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('en-US', { hour12: false });
   };
 
   return (
-    <main className="min-h-screen p-6 md:p-8 flex flex-col gap-6 max-w-[1600px] mx-auto transition-colors duration-300">
-      {/* Header */}
-      <header className="flex items-center justify-between mb-2">
+    <main className="h-screen w-screen p-3 flex flex-col overflow-hidden bg-background">
+      {/* Header - Fixed height */}
+      <header className="flex items-center justify-between py-2 shrink-0">
         <div>
-          <h1 className="text-3xl font-bold tracking-tighter text-foreground">
+          <h1 className="text-2xl font-bold tracking-tighter text-foreground">
             PiBot<span className="text-cyan-500">.Control</span>
           </h1>
-          <p className="text-neutral-500 text-sm font-mono mt-1">OPERATOR: ADMIN_01 // SESSION: ACTIVE</p>
+          <p className="text-neutral-500 text-xs font-mono">OPERATOR: ADMIN_01</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <ThemeToggle />
-          <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-card border border-border">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-card border border-border">
             <div className={clsx("w-2 h-2 rounded-full", isConnected ? "bg-emerald-500 animate-pulse" : "bg-red-500")} />
             <span className="text-xs font-mono font-bold uppercase text-neutral-400">
-              {status === 'connected' ? 'SYSTEM ONLINE' : 'DISCONNECTED'}
+              {status === 'connected' ? 'ONLINE' : 'OFFLINE'}
             </span>
           </div>
           <button className="p-2 rounded-full bg-card border border-border hover:text-cyan-400 transition-colors text-foreground">
-            <Settings size={20} />
+            <Settings size={18} />
           </button>
         </div>
       </header>
 
-      {/* Top Grid: Video & Status */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 min-h-[500px]">
-        {/* Main Video Stream */}
-        <div className="lg:col-span-3 h-full">
-          <VideoPlayer className="w-full h-full min-h-[400px]" />
+      {/* Content Grid - Fills remaining space */}
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-5 gap-3 min-h-0">
+        {/* Main Video Stream - Takes 4/5 width */}
+        <div className="lg:col-span-4 min-h-0">
+          <VideoPlayer className="w-full h-full" />
         </div>
 
-        {/* Right Sidebar: Status & Telemetry */}
-        <div className="flex flex-col gap-4 h-full">
-          <div className="grid grid-cols-2 lg:grid-cols-1 gap-4">
-            <StatusCard
-              label="Signal"
-              value="-42 dBm"
-              icon={Wifi}
-              status="normal"
-            />
-            <StatusCard
-              label="CPU Load"
-              value="12%"
-              icon={Activity}
-              status="normal"
-            />
-            <StatusCard
-              label="Latency"
-              value="24ms"
-              icon={Signal}
-              status="normal"
-            />
+        {/* Right Sidebar - Takes 1/5 width */}
+        <div className="flex flex-col gap-2 min-h-0 overflow-hidden">
+          {/* Status Cards - Compact */}
+          <div className="grid grid-cols-2 lg:grid-cols-1 gap-2 shrink-0">
+            <StatusCard label="CPU" value="12%" icon={Activity} status="normal" />
+            <StatusCard label="Ping" value="24ms" icon={Signal} status="normal" />
           </div>
 
-          {/* Mini Log / Console */}
-          <div className="flex-1 bg-neutral-900/50 rounded-xl border border-neutral-800 p-4 font-mono text-xs text-neutral-400 overflow-hidden relative">
-            <div className="absolute top-2 right-2 text-[10px] uppercase text-neutral-600">Syslog</div>
-            <div className="flex flex-col gap-1 mt-4 max-h-[200px] overflow-y-auto">
-              <span className="text-emerald-500/80">[10:42:01] System intialized</span>
-              <span className="text-blue-500/80">[10:42:02] Connected to broker</span>
-              <span className="text-neutral-500">[10:42:03] Video stream ready</span>
-              <span className="text-neutral-500">[10:42:05] Telemetry active</span>
+          {/* Log Console - Fills available space */}
+          <div className="flex-1 bg-neutral-900/50 rounded-lg border border-neutral-800 p-2 font-mono text-[10px] text-neutral-400 overflow-hidden min-h-0">
+            <div className="text-[8px] uppercase text-neutral-600 mb-1">Syslog</div>
+            <div className="flex flex-col gap-0.5 h-full overflow-y-auto">
+              <span className="text-emerald-500/80">[SYS] Initialized</span>
+              <span className="text-blue-500/80">[MQTT] Connected</span>
               {lastMessage && (
-                <span className="text-cyan-500/80 font-bold flex items-center gap-2">
-                  <span>{`> ${lastMessage}`}</span>
-                </span>
+                <span className="text-cyan-500/80">&gt; {lastMessage}</span>
               )}
-              {/* Detection logs */}
-              {detectionLogs.slice(0, 10).map((log, idx) => (
-                <span key={idx} className="text-purple-400/80">
-                  [{formatTime(log.timestamp)}] Detected: {log.objects.join(', ')}
+              {detectionLogs.slice(0, 5).map((log, idx) => (
+                <span key={idx} className="text-purple-400/80 truncate">
+                  [{formatTime(log.timestamp).slice(0, 5)}] {log.objects.slice(0, 2).join(', ')}
                 </span>
               ))}
             </div>
           </div>
-          <div className="bg-neutral-900/30 border border-neutral-800 rounded-xl p-6">
+
+          {/* Joystick - Fixed size at bottom */}
+          <div className="bg-neutral-900/30 border border-neutral-800 rounded-lg p-2 flex justify-center shrink-0">
             <Joystick
-              label="Movement"
+              label="Move"
               type="movement"
               onMove={handleJoystickMove}
             />
           </div>
         </div>
       </div>
-
-
     </main>
   );
 }

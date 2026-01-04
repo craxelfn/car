@@ -226,7 +226,7 @@ export default function ObjectDetectionOverlay({ videoRef, isVideoReady }: Objec
             {backendStatus === 'connected' && (
                 <div className="absolute bottom-4 right-4 z-20 px-3 py-2 bg-black/50 rounded-lg flex items-center gap-2">
                     <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-                    <span className="text-xs text-white font-mono">AI (Python Server)</span>
+                    <span className="text-xs text-white font-mono">AI </span>
                 </div>
             )}
         </>

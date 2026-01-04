@@ -17,7 +17,7 @@ export default function Joystick({ label, type, onMove, className }: JoystickPro
     const isActiveRef = useRef(false);
     const positionRef = useRef({ x: 0, y: 0 });
     const rafRef = useRef<number | null>(null);
-    const maxRadius = 60;
+    const maxRadius = 40;
 
     // Direct position update - no interpolation for instant response
     const updatePosition = useCallback((x: number, y: number) => {
@@ -119,7 +119,7 @@ export default function Joystick({ label, type, onMove, className }: JoystickPro
         <div className={clsx("flex flex-col items-center gap-4 select-none", className)}>
             <div
                 ref={containerRef}
-                className="w-48 h-48 rounded-full border-4 border-neutral-700 flex items-center justify-center relative touch-none bg-neutral-900/50"
+                className="w-32 h-32 rounded-full border-4 border-neutral-700 flex items-center justify-center relative touch-none bg-neutral-900/50"
                 style={{ transition: 'border-color 0.15s, box-shadow 0.15s' }}
                 onPointerDown={handlePointerDown}
                 onPointerMove={handlePointerMove}
@@ -135,13 +135,13 @@ export default function Joystick({ label, type, onMove, className }: JoystickPro
                         backfaceVisibility: 'hidden'
                     }}
                     className={clsx(
-                        "w-20 h-20 rounded-full shadow-xl flex items-center justify-center pointer-events-none",
+                        "w-14 h-14 rounded-full shadow-xl flex items-center justify-center pointer-events-none",
                         type === 'movement'
                             ? "bg-gradient-to-br from-cyan-500 to-blue-700 text-white"
                             : "bg-gradient-to-br from-purple-500 to-indigo-700 text-white"
                     )}
                 >
-                    {type === 'movement' ? <Crosshair size={24} /> : <div className="w-3 h-3 bg-white rounded-full" />}
+                    {type === 'movement' ? <Crosshair size={18} /> : <div className="w-2 h-2 bg-white rounded-full" />}
                 </div>
             </div>
 
