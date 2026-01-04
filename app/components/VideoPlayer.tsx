@@ -238,7 +238,7 @@ export default function VideoPlayer({ className }: VideoPlayerProps) {
                 muted
                 playsInline
                 className={clsx(
-                    "w-full h-full object-cover min-h-[400px]",
+                    "w-full h-full object-contain bg-black",
                     connectionState !== 'connected' && "hidden"
                 )}
             />
