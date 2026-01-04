@@ -1,19 +1,20 @@
 "use client";
 import { useRef } from 'react';
 
-import { Activity, Battery, Signal, Wifi, Settings } from 'lucide-react';
+import { Activity, Signal, Wifi, Settings } from 'lucide-react';
 import VideoPlayer from './components/VideoPlayer';
 import Joystick from './components/Joystick';
 import StatusCard from './components/StatusCard';
-import DetectionLogic from './components/DetectionLogic';
 import { useIoTConnection } from './context/IoTConnectionContext';
+import { DetectionProvider, useDetection } from './context/DetectionContext';
 import clsx from 'clsx';
 
 import { ThemeToggle } from './components/ThemeToggle';
 import { useKeyboardControls } from './hooks/use-keyboard-controls';
 
-export default function Home() {
+function DashboardContent() {
   const { isConnected, status, sendCommand, lastMessage } = useIoTConnection();
+  const { detectionLogs } = useDetection();
 
   // Use the new keyboard controls hook
   useKeyboardControls({
@@ -41,6 +42,11 @@ export default function Home() {
       console.log(`[Joystick] Triggering API: ${command}`);
       sendCommand(command);
     }
+  };
+
+  // Format time for logs
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString('en-US', { hour12: false });
   };
 
   return (
@@ -78,12 +84,6 @@ export default function Home() {
         <div className="flex flex-col gap-4 h-full">
           <div className="grid grid-cols-2 lg:grid-cols-1 gap-4">
             <StatusCard
-              label="Battery"
-              value="84%"
-              icon={Battery}
-              status={84 > 20 ? 'normal' : 'critical'}
-            />
-            <StatusCard
               label="Signal"
               value="-42 dBm"
               icon={Wifi}
@@ -101,12 +101,13 @@ export default function Home() {
               icon={Signal}
               status="normal"
             />
+
           </div>
 
           {/* Mini Log / Console */}
           <div className="flex-1 bg-neutral-900/50 rounded-xl border border-neutral-800 p-4 font-mono text-xs text-neutral-400 overflow-hidden relative">
             <div className="absolute top-2 right-2 text-[10px] uppercase text-neutral-600">Syslog</div>
-            <div className="flex flex-col gap-1 mt-4">
+            <div className="flex flex-col gap-1 mt-4 max-h-[200px] overflow-y-auto">
               <span className="text-emerald-500/80">[10:42:01] System intialized</span>
               <span className="text-blue-500/80">[10:42:02] Connected to broker</span>
               <span className="text-neutral-500">[10:42:03] Video stream ready</span>
@@ -116,15 +117,15 @@ export default function Home() {
                   <span>{`> ${lastMessage}`}</span>
                 </span>
               )}
+              {/* Detection logs */}
+              {detectionLogs.slice(0, 10).map((log, idx) => (
+                <span key={idx} className="text-purple-400/80">
+                  [{formatTime(log.timestamp)}] Detected: {log.objects.join(', ')}
+                </span>
+              ))}
             </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Bottom Grid: Controls & Detection */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-2">
-        {/* Controls - takes 4 columns */}
-        <div className="lg:col-span-5 bg-neutral-900/30 border border-neutral-800 rounded-xl p-6 flex items-center justify-around">
+          </div>
           <Joystick
             label="Movement"
             type="movement"
@@ -132,11 +133,17 @@ export default function Home() {
           />
         </div>
 
-        {/* Detection Logic - takes 7 columns */}
-        <div className="lg:col-span-7">
-          <DetectionLogic />
-        </div>
       </div>
+
+
     </main>
+  );
+}
+
+export default function Home() {
+  return (
+    <DetectionProvider>
+      <DashboardContent />
+    </DetectionProvider>
   );
 }

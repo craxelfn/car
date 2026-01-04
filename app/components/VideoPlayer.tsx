@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { VideoOff, RefreshCw, Loader2 } from 'lucide-react';
 import clsx from 'clsx';
+import ObjectDetectionOverlay from './ObjectDetectionOverlay';
 
 interface VideoPlayerProps {
     className?: string;
@@ -241,6 +242,14 @@ export default function VideoPlayer({ className }: VideoPlayerProps) {
                     connectionState !== 'connected' && "hidden"
                 )}
             />
+
+            {/* Object Detection Overlay */}
+            {connectionState === 'connected' && (
+                <ObjectDetectionOverlay
+                    videoRef={videoRef}
+                    isVideoReady={connectionState === 'connected'}
+                />
+            )}
 
             {/* Loading/Error states */}
             {connectionState !== 'connected' && (
