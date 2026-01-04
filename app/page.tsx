@@ -124,19 +124,17 @@ function DashboardContent() {
               ))}
             </div>
           </div>
+          <div className="bg-neutral-900/30 border border-neutral-800 rounded-xl p-6">
+            <Joystick
+              label="Movement"
+              type="movement"
+              onMove={handleJoystickMove}
+            />
+          </div>
         </div>
       </div>
 
-      {/* Bottom: Joystick Controls */}
-      <div className="flex justify-center">
-        <div className="bg-neutral-900/30 border border-neutral-800 rounded-xl p-6">
-          <Joystick
-            label="Movement"
-            type="movement"
-            onMove={handleJoystickMove}
-          />
-        </div>
-      </div>
+
     </main>
   );
 }

@@ -123,7 +123,7 @@ export default function ObjectDetectionOverlay({ videoRef, isVideoReady }: Objec
 
         const sendFrameToServer = async () => {
             if (!isRunning || !frameCanvasRef.current || video.paused || video.ended) {
-                if (isRunning) detectionLoopRef.current = setTimeout(sendFrameToServer, 200);
+                if (isRunning) detectionLoopRef.current = setTimeout(sendFrameToServer, 300);
                 return;
             }
 
