@@ -3,10 +3,10 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, QueryCommand } from '@aws-sdk/lib-dynamodb';
 
 const client = new DynamoDBClient({
-    region: process.env.NEXT_PUBLIC_AWS_REGION,
+    region: process.env.AWS_REGION || process.env.NEXT_PUBLIC_AWS_REGION,
     credentials: {
-        accessKeyId: process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID!,
-        secretAccessKey: process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY!,
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID || process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID!,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY!,
     },
 });
 
@@ -20,15 +20,12 @@ export async function GET() {
             return NextResponse.json({ error: 'DynamoDB table name not configured' }, { status: 500 });
         }
 
-        // Calculate timestamp for 1 minute ago to get recent stats
-        const oneMinuteAgo = Date.now() - 60000;
-
+        // Query for the absolute latest System_Stats item (no time filter)
         const command = new QueryCommand({
             TableName: tableName,
-            KeyConditionExpression: 'PK = :pk AND SK > :sk',
+            KeyConditionExpression: 'PK = :pk',
             ExpressionAttributeValues: {
-                ':pk': 'System_Stats',
-                ':sk': oneMinuteAgo.toString()
+                ':pk': 'System_Stats'
             },
             ScanIndexForward: false, // Sort descending (newest first)
             Limit: 1
@@ -38,14 +35,16 @@ export async function GET() {
         const item = response.Items?.[0];
 
         if (item) {
+            console.log('[System Stats] Fetched:', item);
             return NextResponse.json({
-                cpu: parseFloat(item.CPU),
-                ram: parseFloat(item.RAM),
-                timestamp: parseInt(item.SK)
+                cpu: parseFloat(item.CPU || '0'),
+                ram: parseFloat(item.RAM || '0'),
+                battery: parseFloat(item.Battery || '0'),
+                timestamp: item.SK
             });
         }
 
-        return NextResponse.json({ error: 'No stats found' }, { status: 404 });
+        return NextResponse.json({ cpu: 0, ram: 0, battery: 0, timestamp: null });
 
     } catch (error) {
         console.error('Error fetching system stats:', error);

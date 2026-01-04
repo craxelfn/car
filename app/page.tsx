@@ -15,7 +15,7 @@ import { useKeyboardControls } from './hooks/use-keyboard-controls';
 function DashboardContent() {
   const { isConnected, status, sendCommand, lastMessage } = useIoTConnection();
   const { detectionLogs } = useDetection();
-  const [systemStats, setSystemStats] = useState<{ cpu: number; ram: number } | null>(null);
+  const [systemStats, setSystemStats] = useState<{ cpu: number; ram: number; battery: number } | null>(null);
 
   // Poll system stats
   useEffect(() => {
@@ -25,7 +25,11 @@ function DashboardContent() {
         if (res.ok) {
           const data = await res.json();
           if (data.cpu !== undefined) {
-            setSystemStats({ cpu: data.cpu, ram: data.ram });
+            setSystemStats({
+              cpu: data.cpu,
+              ram: data.ram,
+              battery: data.battery || 0
+            });
           }
         }
       } catch (e) {
@@ -34,7 +38,7 @@ function DashboardContent() {
     };
 
     fetchStats();
-    const interval = setInterval(fetchStats, 2000);
+    const interval = setInterval(fetchStats, 5000);
     return () => clearInterval(interval);
   }, []);
 
