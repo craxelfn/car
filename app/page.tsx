@@ -1,7 +1,7 @@
 "use client";
-import { useRef } from 'react';
+import { useRef, useState, useEffect } from 'react';
 
-import { Activity, Signal, Settings } from 'lucide-react';
+import { Activity, Signal, Wifi, Settings } from 'lucide-react';
 import VideoPlayer from './components/VideoPlayer';
 import Joystick from './components/Joystick';
 import StatusCard from './components/StatusCard';
@@ -15,6 +15,28 @@ import { useKeyboardControls } from './hooks/use-keyboard-controls';
 function DashboardContent() {
   const { isConnected, status, sendCommand, lastMessage } = useIoTConnection();
   const { detectionLogs } = useDetection();
+  const [systemStats, setSystemStats] = useState<{ cpu: number; ram: number } | null>(null);
+
+  // Poll system stats
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await fetch('/api/system-stats');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.cpu !== undefined) {
+            setSystemStats({ cpu: data.cpu, ram: data.ram });
+          }
+        }
+      } catch (e) {
+        console.error("Failed to fetch stats", e);
+      }
+    };
+
+    fetchStats();
+    const interval = setInterval(fetchStats, 2000);
+    return () => clearInterval(interval);
+  }, []);
 
   useKeyboardControls({
     onMove: (command: string) => {
@@ -79,8 +101,18 @@ function DashboardContent() {
         <div className="flex flex-col gap-2 min-h-0 overflow-hidden">
           {/* Status Cards - Compact */}
           <div className="grid grid-cols-2 lg:grid-cols-1 gap-2 shrink-0">
-            <StatusCard label="CPU" value="12%" icon={Activity} status="normal" />
-            <StatusCard label="Ping" value="24ms" icon={Signal} status="normal" />
+            <StatusCard
+              label="CPU Load"
+              value={systemStats ? `${systemStats.cpu}%` : '--%'}
+              icon={Activity}
+              status={systemStats && systemStats.cpu > 80 ? 'warning' : 'normal'}
+            />
+            <StatusCard
+              label="RAM Usage"
+              value={systemStats ? `${systemStats.ram}%` : '--%'}
+              icon={Signal}
+              status="normal"
+            />
           </div>
 
           {/* Log Console - Fills available space */}

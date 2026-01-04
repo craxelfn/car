@@ -103,10 +103,10 @@ async def detect_objects(request: DetectionRequest):
         scores = results['detection_scores'][0].numpy()
         classes = results['detection_classes'][0].numpy().astype(int)
         
-        # Filter by confidence threshold (0.4)
+        # Filter by confidence threshold (0.5 = 50%)
         predictions = []
         for i in range(len(scores)):
-            if scores[i] > 0.4:
+            if scores[i] > 0.5:
                 # Convert from relative to absolute coordinates
                 y1, x1, y2, x2 = boxes[i]
                 bbox = [
