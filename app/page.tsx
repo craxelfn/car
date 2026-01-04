@@ -30,12 +30,12 @@ function DashboardContent() {
   const handleJoystickMove = (x: number, y: number) => {
     let command = 'stop';
 
-    // Simple threshold logic for direction (could be improved for 8-way if needed)
-    // Using 0.5 threshold to require some deliberate movement
-    if (y > 0.5) command = 'forward';
-    else if (y < -0.5) command = 'backward';
-    else if (x < -0.5) command = 'left';
-    else if (x > 0.5) command = 'right';
+    // Simple threshold logic for direction
+    // Using 0.4 threshold for easier triggering
+    if (y > 0.4) command = 'forward';
+    else if (y < -0.4) command = 'backward';
+    else if (x < -0.4) command = 'left';
+    else if (x > 0.4) command = 'right';
 
     if (command !== lastJoystickCommand.current) {
       lastJoystickCommand.current = command;
@@ -75,7 +75,7 @@ function DashboardContent() {
 
       {/* Top Grid: Video & Status */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 min-h-[500px]">
-        {/* Main Video Logic Stream */}
+        {/* Main Video Stream */}
         <div className="lg:col-span-3 h-full">
           <VideoPlayer className="w-full h-full min-h-[400px]" />
         </div>
@@ -101,7 +101,6 @@ function DashboardContent() {
               icon={Signal}
               status="normal"
             />
-
           </div>
 
           {/* Mini Log / Console */}
@@ -124,18 +123,20 @@ function DashboardContent() {
                 </span>
               ))}
             </div>
-
           </div>
+        </div>
+      </div>
+
+      {/* Bottom: Joystick Controls */}
+      <div className="flex justify-center">
+        <div className="bg-neutral-900/30 border border-neutral-800 rounded-xl p-6">
           <Joystick
             label="Movement"
             type="movement"
             onMove={handleJoystickMove}
           />
         </div>
-
       </div>
-
-
     </main>
   );
 }

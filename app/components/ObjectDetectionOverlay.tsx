@@ -15,11 +15,35 @@ export default function ObjectDetectionOverlay({ videoRef, isVideoReady }: Objec
     const modelRef = useRef<cocoSsd.ObjectDetection | null>(null);
     const animationFrameRef = useRef<number | null>(null);
     const lastLogTimeRef = useRef<number>(0);
+    const lastSaveTimeRef = useRef<number>(0);
 
     const [isModelLoading, setIsModelLoading] = useState(true);
     const [modelError, setModelError] = useState<string | null>(null);
 
     const { setDetectedObjects, addDetectionLog, targetClass } = useDetection();
+
+    // Save detections to DynamoDB
+    const saveDetectionToDynamoDB = useCallback(async (objects: DetectedObject[]) => {
+        try {
+            const response = await fetch('/api/save-detection', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    objects: objects.map(o => ({ class: o.class, score: o.score }))
+                }),
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                console.log(`[DynamoDB] Saved detection: ${result.detectionId}`);
+            } else {
+                const error = await response.json();
+                console.error('[DynamoDB] Failed to save:', error.error);
+            }
+        } catch (error) {
+            console.error('[DynamoDB] Error saving detection:', error);
+        }
+    }, []);
 
     // Load the COCO-SSD model
     useEffect(() => {
@@ -138,6 +162,12 @@ export default function ObjectDetectionOverlay({ videoRef, isVideoReady }: Objec
                     console.log(`[Detection] Detected: ${objectNames.join(', ')}`);
                     addDetectionLog(predictions.map(p => p.class));
                 }
+
+                // Save to DynamoDB (throttled to every 5 seconds)
+                if (predictions.length > 0 && now - lastSaveTimeRef.current > 5000) {
+                    lastSaveTimeRef.current = now;
+                    saveDetectionToDynamoDB(detectedObjects);
+                }
             } catch (error) {
                 console.error('[Detection] Error during detection:', error);
             }
@@ -158,7 +188,7 @@ export default function ObjectDetectionOverlay({ videoRef, isVideoReady }: Objec
                 cancelAnimationFrame(animationFrameRef.current);
             }
         };
-    }, [isVideoReady, isModelLoading, videoRef, drawDetections, setDetectedObjects, addDetectionLog]);
+    }, [isVideoReady, isModelLoading, videoRef, drawDetections, setDetectedObjects, addDetectionLog, saveDetectionToDynamoDB]);
 
     return (
         <>
