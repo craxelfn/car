@@ -17,7 +17,18 @@ export default function Joystick({ label, type, onMove, className }: JoystickPro
     const isActiveRef = useRef(false);
     const positionRef = useRef({ x: 0, y: 0 });
     const rafRef = useRef<number | null>(null);
+    const lastEmittedDirection = useRef<string>('center'); // Track direction state
     const maxRadius = 40;
+
+    // Convert normalized x,y to a direction string
+    const getDirection = useCallback((normX: number, normY: number): string => {
+        const threshold = 0.4;
+        if (normY > threshold) return 'forward';
+        if (normY < -threshold) return 'backward';
+        if (normX < -threshold) return 'left';
+        if (normX > threshold) return 'right';
+        return 'center';
+    }, []);
 
     // Direct position update - no interpolation for instant response
     const updatePosition = useCallback((x: number, y: number) => {
@@ -90,8 +101,14 @@ export default function Joystick({ label, type, onMove, className }: JoystickPro
 
         const normX = x / maxRadius;
         const normY = -(y / maxRadius);
-        onMove?.(normX, normY);
-    }, [onMove, updatePosition]);
+
+        // Only call onMove when direction changes (debouncing)
+        const currentDirection = getDirection(normX, normY);
+        if (currentDirection !== lastEmittedDirection.current) {
+            lastEmittedDirection.current = currentDirection;
+            onMove?.(normX, normY);
+        }
+    }, [onMove, updatePosition, getDirection]);
 
     const handlePointerUp = useCallback((e: React.PointerEvent) => {
         isActiveRef.current = false;
@@ -104,7 +121,12 @@ export default function Joystick({ label, type, onMove, className }: JoystickPro
 
         // Start spring-back animation
         rafRef.current = requestAnimationFrame(animateBack);
-        onMove?.(0, 0);
+
+        // Only emit stop if we were not already at center
+        if (lastEmittedDirection.current !== 'center') {
+            lastEmittedDirection.current = 'center';
+            onMove?.(0, 0);
+        }
     }, [onMove, animateBack]);
 
     useEffect(() => {
