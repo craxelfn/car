@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 
 // Backend URL - set NEXT_PUBLIC_BACKEND_URL in .env for deployment
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://nd98bztz9l.execute-api.eu-west-1.amazonaws.com';
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://ix9bs1k4f7.execute-api.eu-west-1.amazonaws.com';
 import { useDetection, DetectedObject } from '../context/DetectionContext';
 
 interface ObjectDetectionOverlayProps {
