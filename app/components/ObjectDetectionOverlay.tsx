@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+
+// Backend URL - set NEXT_PUBLIC_BACKEND_URL in .env for deployment
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 import { useDetection, DetectedObject } from '../context/DetectionContext';
 
 interface ObjectDetectionOverlayProps {
@@ -49,7 +52,7 @@ export default function ObjectDetectionOverlay({ videoRef, isVideoReady }: Objec
     useEffect(() => {
         const checkHealth = async () => {
             try {
-                const response = await fetch('http://localhost:8000/health');
+                const response = await fetch(`${BACKEND_URL}/health`);
                 if (response.ok) {
                     setBackendStatus('connected');
                     console.log('[Detection] Python backend connected');
@@ -151,7 +154,7 @@ export default function ObjectDetectionOverlay({ videoRef, isVideoReady }: Objec
                     const imageData = frameCanvas.toDataURL('image/jpeg', 0.6).split(',')[1];
 
                     // Send to Python server
-                    const response = await fetch('http://localhost:8000/detect', {
+                    const response = await fetch(`${BACKEND_URL}/detect`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ imageData, width, height }),
