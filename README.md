@@ -23,6 +23,8 @@ A high-performance, real-time control interface for remote robotics, featuring l
 
 ## 🏗️ Architecture
 
+![Project Architecture](./architecture/architecture.png)
+
 The project consists of two main components:
 
 1.  **Frontend (Next.js 14)**: Handles the UI, WebRTC streaming, and control logic.
